@@ -44,7 +44,7 @@ Recipe Name.
 
   - heaped | level : These indicate that the measure is dry.
 
-  The ingredient-name may be anything reasonable, and may include space characters. The ingredient list is optional. If present, it declares ingredients with the given initial values and measures. If an ingredient is repeated, the new vaue is used and previous values for that ingredient are ignored
+  The ingredient-name may be anything reasonable, and may include space characters. The ingredient list is mandatory. It declares ingredients with the given initial values and measures. If an ingredient is repeated, the new vaue is used and previous values for that ingredient are ignored
 
 ```Chef
 Ingredients.

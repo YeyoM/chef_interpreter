@@ -13,6 +13,7 @@ class Ingredient:
     value: float
     measure: str
     measure_type: str
+    ingredient_type: str
 
 
 @dataclass
@@ -47,7 +48,10 @@ class Chef:
         self.baking_dishes = []
         self.recipe_name = None
         self.comment = None
+        self.original_ingr = None
         self.ingr = None
+        self.ingredients_names = []
+        self.original_method = None
         self.method = None
         self.cook_time = None
         self.oven_temp = None
@@ -73,7 +77,7 @@ class Chef:
         if self.comment is not None:
             first_line = self.comment.group().split(" ")[0]
             if "Ingredients" in first_line:
-                self.ingr = self.comment
+                self.original_ingr = self.comment
                 self.comment = None
             else:
                 print("Comment: ", self.comment.group())
@@ -82,21 +86,22 @@ class Chef:
         ############################################################################
         # now we can parse the ingredients
         ############################################################################
-        if self.ingr is None:
-            self.ingr = re.match("(.*?)\n\n", self.script, re.DOTALL)
-            if self.ingr is None:
+        if self.original_ingr is None:
+            self.original_ingr = re.match("(.*?)\n\n", self.script, re.DOTALL)
+            if self.original_ingr is None:
                 raise ValueError(
                     "Invalid script format, please provide a valid recipe (no ingredients)"
                 )
-            first_line = self.ingr.group().split(" ")[0]
+            first_line = self.original_ingr.group().split(" ")[0]
             if "Ingredients" not in first_line:
                 raise ValueError(
                     "Invalid script format, please provide a valid recipe (no ingredients)"
                 )
 
-        self.script = re.sub(re.escape(self.ingr.group()), "", self.script)
-        print(f"Ingredients: {self.ingr.group()}")
-        # TODO: parse ingredients (check that the format is correct)
+        self.script = re.sub(re.escape(self.original_ingr.group()), "", self.script)
+        print(f"Ingredients: {self.original_ingr.group()}")
+
+        self.parse_ingredients(self.original_ingr.group())
 
         ############################################################################
         # now we can parse the method, note that we can also have before the method
@@ -107,7 +112,7 @@ class Chef:
         if method is not None:
             first_line = method.group().split(" ")[0]
             if "Method" in first_line:
-                self.method = method
+                self.original_method = method
                 method = None
             elif "Cooking" in first_line:
                 self.cook_time = method
@@ -128,7 +133,7 @@ class Chef:
             if method is not None:
                 first_line = method.group().split(" ")[0]
                 if "Method" in first_line:
-                    self.method = method
+                    self.original_method = method
                     method = None
                 elif "Pre-heat" in first_line:
                     self.oven_temp = method
@@ -142,22 +147,22 @@ class Chef:
             print("Oven Temperature: ", self.oven_temp.group())
             self.script = re.sub(re.escape(self.oven_temp.group()), "", self.script)
 
-        if self.method is None:
-            self.method = re.match("(.*?)\n\n", self.script, re.DOTALL)
-            if self.method is None:
+        if self.original_method is None:
+            self.original_method = re.match("(.*?)\n\n", self.script, re.DOTALL)
+            if self.original_method is None:
                 raise ValueError(
                     "Invalid script format, please provide a valid recipe (no method)"
                 )
-            first_line = self.method.group().split(" ")[0]
+            first_line = self.original_method.group().split(" ")[0]
             if "Method" not in first_line:
                 raise ValueError(
                     "Invalid script format, please provide a valid recipe (no method)"
                 )
 
-        self.script = re.sub(re.escape(self.method.group()), "", self.script)
-        print(f"Method: {self.method.group()}")
+        self.script = re.sub(re.escape(self.original_method.group()), "", self.script)
+        print(f"Method: {self.original_method.group()}")
 
-        # TODO: parse method
+        self.parse_method(self.original_method.group())
 
         ############################################################################
         # Parse the serves
@@ -236,6 +241,145 @@ class Chef:
                         [],
                     )
                 )
+
+    def parse_ingredients(self, ingredients):
+        """
+        example list
+
+        Ingredients.
+        111 g sugar
+        12 ml hot water
+
+        [initial-value] [[measure-type] measure] ingredient-name
+
+        1. The initial-value is a positive integer. (Required)
+        2. The measure-type is one of the following: heaped | level : These indicate that the measure is dry. (Optional)
+        3. The measure is one of the following... (Optional)
+            g | kg | pinch[es] : These always indicate dry measures.
+            ml | l | dash[es] : These always indicate liquid measures.
+            cup[s] | teaspoon[s] | tablespoon[s] : These indicate measures which may be either dry or liquid.
+        4. The ingredient-name is any string of characters. (Required)
+        """
+
+        ingredients = ingredients.split("\n")
+
+        measure_types = set(["heaped", "level"])
+
+        measures = set(
+            [
+                "g",
+                "kg",
+                "pinch",
+                "pinches",
+                "ml",
+                "l",
+                "dash",
+                "dashes",
+                "cup",
+                "cups",
+                "teaspoon",
+                "teaspoons",
+                "tablespoon",
+                "tablespoons",
+            ]
+        )
+
+        parsed_ingredients = []
+
+        for ingredient in ingredients:
+            if ingredient == "Ingredients." or ingredient == "":
+                continue
+
+            ingredient = ingredient.split(" ")
+            initial_value = ingredient[0]
+            if not initial_value.isdigit():
+                raise ValueError(
+                    "Invalid ingredient format, initial value must be a number"
+                )
+            measure = ingredient[1]
+            if measure not in measures:
+                measure = None
+                ingredient_name = " ".join(ingredient[1:])
+                if ingredient_name == "" or ingredient_name in measure_types:
+                    raise ValueError(
+                        "Invalid ingredient format, ingredient name must be provided"
+                    )
+            else:
+                measure_type = ingredient[2]
+                if measure_type not in measure_types:
+                    measure_type = None
+                    ingredient_name = " ".join(ingredient[2:])
+                    self.ingredients_names.append(ingredient_name)
+                else:
+                    ingredient_name = " ".join(ingredient[3:])
+                    self.ingredients_names.append(ingredient_name)
+
+            parsed_ingredients.append(
+                {
+                    "initial_value": initial_value,
+                    "measure": measure,
+                    "measure_type": measure_type,
+                    "ingredient_name": ingredient_name,
+                }
+            )
+
+        self.ingr = parsed_ingredients
+
+    def parse_method(self, method):
+        """
+        example list
+
+        Method.
+        method-instruction.
+        """
+        instruction_set = set(
+            [
+                "Take",
+                "Put",
+                "Fold",
+                "Add",
+                "Remove",
+                "Combine",
+                "Divide",
+                "Liquefy",
+                "Liquify",
+                "Stir",
+                "Mix",
+                "Clean",
+                "Pour",
+                "Serve",
+                "Refrigerate",
+                "Verb",
+                "Set",
+            ]
+        )
+
+        instructions = method.split("\n")
+
+        parsed_instructions = []
+
+        for instruction in instructions:
+            if instruction == "Method." or instruction == "":
+                continue
+
+            instruction = instruction.split(" ")
+            verb = instruction[0]
+            if verb not in instruction_set:
+                raise ValueError(
+                    "Invalid instruction format, instruction must be a valid instruction",
+                    verb,
+                )
+
+            parsed_instructions.append(" ".join(instruction))
+
+        self.method = parsed_instructions
+
+    # DO NOT IMPLEMENT THIS FUNCTION FOR NOW
+    def parse_auxiliary_recipe(self, recipe):
+        pass
+
+    def execute_script(self):
+        pass
 
 
 def main():
