@@ -24,6 +24,8 @@ Chef is a simple esoteric programming language that is based on cooking. The lan
 
 The following items appear in a Chef recipe. Some are optional. Items must appear in the order shown below, with a blank line (two newlines) between each item.
 
+**NOTE**. Remember that between each component of the recipe, there must be 2 newlines, this is mandatory for the interpreter to work, also, at the end of the document, there must be two newlines.
+
 - **Recipe Title**: The name of the recipe. This always should appear at the first line of the recipe.
 
 ```chef
@@ -104,4 +106,4 @@ This statement writes to STDOUT the contents of the first number-of-diners bakin
 
   For example, the main recipe calls for a sauce at some point. The sauce recipe is begun by the sous-chef with an exact copy of all the calling chef's mixing bowls and baking dishes. Changes to these bowls and dishes do not affect the calling chef's bowls and dishes. When the sous-chef is finished, he passes his first mixing bowl back to the calling chef, who empties it into his first mixing bowl.
 
-  An auxiliary recipe may have all the same items as a main recipe.
+  An auxiliary recipe must only have the 3 main components, the name, the ingredients list, and the method.
