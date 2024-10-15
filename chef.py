@@ -396,9 +396,9 @@ class Chef:
     def parse_auxiliary_recipe(self, recipe):
         pass
 
-    def prepare_mixing_bowls(self, instruction):
+    def prepare_mixing_bowls(self, instruction, mixing_bowl_number):
         # check if there are any more mixing bowls
-        if instruction.group(2) is None:
+        if mixing_bowl_number is None:
             if self.number_of_mixing_bowls > 1:
                 raise ValueError(
                     "A mixing bowl may not be used without a number if other mixing bowls have been used with a number."
@@ -407,10 +407,11 @@ class Chef:
                 mixing_bowl_number = 1
                 if len(self.mixing_bowls) == 0:
                     self.mixing_bowls.append(MixingBowl("Mixing Bowl 1", []))
+                    return mixing_bowl_number
 
         # check that we provide with enough mixing bowls
-        if instruction.group(2) is not None:
-            self.number_of_mixing_bowls = int(instruction.group(2))
+        if mixing_bowl_number is not None:
+            self.number_of_mixing_bowls = mixing_bowl_number
             mixing_bowl_number = self.number_of_mixing_bowls
             if self.number_of_mixing_bowls > len(self.mixing_bowls):
                 for i in range(len(self.mixing_bowls), self.number_of_mixing_bowls):
@@ -418,9 +419,9 @@ class Chef:
 
         return mixing_bowl_number
 
-    def prepare_baking_dishes(self, instruction):
+    def prepare_baking_dishes(self, instruction, baking_dish_number):
         # check if there are any more baking dishes
-        if instruction.group(2) is None:
+        if baking_dish_number is None:
             if self.number_of_baking_dishes > 1:
                 raise ValueError(
                     "A baking dish may not be used without a number if other baking dishes have been used with a number."
@@ -429,10 +430,11 @@ class Chef:
                 baking_dish_number = 1
                 if len(self.baking_dishes) == 0:
                     self.baking_dishes.append(BakingDish("Baking Dish 1", []))
+                    return baking_dish_number
 
         # check that we provide with enough baking dishes
-        if instruction.group(2) is not None:
-            self.number_of_baking_dishes = int(instruction.group(2))
+        if baking_dish_number is not None:
+            self.number_of_baking_dishes = baking_dish_number
             baking_dish_number = self.number_of_baking_dishes
             if self.number_of_baking_dishes > len(self.baking_dishes):
                 for i in range(len(self.baking_dishes), self.number_of_baking_dishes):
@@ -448,7 +450,6 @@ class Chef:
 
     def execute_script(self):
         # Execute the instructions
-        print(self.ingr)
         for instruction in self.method:
             ############################################################################
             # PUT INGREDIENT INTO MIXING BOWL
@@ -458,7 +459,7 @@ class Chef:
                 instruction,
             )
             if put is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(put)
+                mixing_bowl_number = self.prepare_mixing_bowls(put, put.group(2))
 
                 self.check_ingredient_is_valid(put.group(1))
 
@@ -476,7 +477,7 @@ class Chef:
                 instruction,
             )
             if fold is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(fold)
+                mixing_bowl_number = self.prepare_mixing_bowls(fold, fold.group(2))
 
                 self.check_ingredient_is_valid(fold.group(1))
 
@@ -494,7 +495,7 @@ class Chef:
                 instruction,
             )
             if add is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(add)
+                mixing_bowl_number = self.prepare_mixing_bowls(add, add.group(2))
 
                 self.check_ingredient_is_valid(add.group(1))
 
@@ -512,7 +513,7 @@ class Chef:
                 instruction,
             )
             if remove is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(remove)
+                mixing_bowl_number = self.prepare_mixing_bowls(remove, remove.group(2))
 
                 self.check_ingredient_is_valid(remove.group(1))
 
@@ -530,7 +531,9 @@ class Chef:
                 instruction,
             )
             if combine is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(combine)
+                mixing_bowl_number = self.prepare_mixing_bowls(
+                    combine, combine.group(2)
+                )
 
                 self.check_ingredient_is_valid(combine.group(1))
 
@@ -548,7 +551,7 @@ class Chef:
                 instruction,
             )
             if stir is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(stir)
+                mixing_bowl_number = self.prepare_mixing_bowls(stir, stir.group(2))
 
                 self.check_ingredient_is_valid(stir.group(1))
 
@@ -566,7 +569,7 @@ class Chef:
                 instruction,
             )
             if divide is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(divide)
+                mixing_bowl_number = self.prepare_mixing_bowls(divide, divide.group(2))
 
                 self.check_ingredient_is_valid(divide.group(1))
 
@@ -584,7 +587,10 @@ class Chef:
                 instruction,
             )
             if liquefy is not None:
-                pass
+                mixing_bowl_number = self.prepare_mixing_bowls(
+                    liquefy, liquefy.group(1)
+                )
+                self.liquefy_all_ingredients(mixing_bowl_number)
 
             ############################################################################
             # LIQUIFY INGREDIENT IN MIXING BOWL
@@ -594,7 +600,9 @@ class Chef:
                 instruction,
             )
             if liquify is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(liquify)
+                mixing_bowl_number = self.prepare_mixing_bowls(
+                    liquify, liquify.group(1)
+                )
                 self.liquefy_all_ingredients(mixing_bowl_number)
 
             ############################################################################
@@ -604,7 +612,7 @@ class Chef:
                 "Clean the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl", instruction
             )
             if clean is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(clean)
+                mixing_bowl_number = self.prepare_mixing_bowls(clean, clean.group(1))
                 self.clean(mixing_bowl_number)
 
             ############################################################################
@@ -614,7 +622,7 @@ class Chef:
                 "Mix the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl well", instruction
             )
             if mix is not None:
-                mixing_bowl_number = self.prepare_mixing_bowls(mix)
+                mixing_bowl_number = self.prepare_mixing_bowls(mix, mix.group(1))
                 self.mix(mixing_bowl_number)
 
             ############################################################################
@@ -632,7 +640,9 @@ class Chef:
                 instruction,
             )
             if pour is not None:
-                pass
+                mixing_bowl_number = self.prepare_mixing_bowls(pour, pour.group(1))
+                baking_dish_number = self.prepare_baking_dishes(pour, pour.group(2))
+                self.pour(mixing_bowl_number, baking_dish_number)
 
             ############################################################################
             # REFREGERATE INGREDIENT IN MIXING BOWL
@@ -658,13 +668,6 @@ class Chef:
             verb = re.search("([a-zA-Z]+) the ([a-zA-Z ]+) ?(?!until)", instruction)
             if verb is not None:
                 pass
-
-        print(len(self.mixing_bowls))
-        for mixing_bowl in self.mixing_bowls:
-            for ingredient in mixing_bowl.ingredients:
-                print(
-                    f"Ingredient: {ingredient.name} {ingredient.value} {ingredient.measure} {ingredient.measure_type} {ingredient.ingredient_type}"
-                )
 
     # Add the ingredient to the top of the mixing bowl
     def put(self, ingredient, mixing_bowl_number):
@@ -806,11 +809,14 @@ class Chef:
     # Serve the dish (print the recipe)
     def serve(self):
         output = ""
+        if self.number_of_baking_dishes == 0 or len(self.baking_dishes) == 0:
+            raise ValueError("No baking dishes found")
+
         for i in range(0, self.number_of_baking_dishes):
             self.baking_dishes[i].ingredients.reverse()
-            for ingredient in baking_dishes[i].ingredients:
+            for ingredient in self.baking_dishes[i].ingredients:
                 value = ingredient.value
-                type = ingredient.inredient_type
+                type = ingredient.ingredient_type
                 if type == "liquid":
                     value = chr(int(value))
                 output += str(value)
@@ -825,6 +831,8 @@ def main():
     chef = Chef(script)
     chef.parse_script()
     chef.execute_script()
+    result = chef.serve()
+    print(result)
 
 
 if __name__ == "__main__":
