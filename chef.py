@@ -396,6 +396,56 @@ class Chef:
     def parse_auxiliary_recipe(self, recipe):
         pass
 
+    def prepare_mixing_bowls(self, instruction):
+        # check if there are any more mixing bowls
+        if instruction.group(2) is None:
+            if self.number_of_mixing_bowls > 1:
+                raise ValueError(
+                    "A mixing bowl may not be used without a number if other mixing bowls have been used with a number."
+                )
+            else:
+                mixing_bowl_number = 1
+                if len(self.mixing_bowls) == 0:
+                    self.mixing_bowls.append(MixingBowl("Mixing Bowl 1", []))
+
+        # check that we provide with enough mixing bowls
+        if instruction.group(2) is not None:
+            self.number_of_mixing_bowls = int(instruction.group(2))
+            mixing_bowl_number = self.number_of_mixing_bowls
+            if self.number_of_mixing_bowls > len(self.mixing_bowls):
+                for i in range(len(self.mixing_bowls), self.number_of_mixing_bowls):
+                    self.mixing_bowls.append(MixingBowl(f"Mixing Bowl {i+1}", []))
+
+        return mixing_bowl_number
+
+    def prepare_baking_dishes(self, instruction):
+        # check if there are any more baking dishes
+        if instruction.group(2) is None:
+            if self.number_of_baking_dishes > 1:
+                raise ValueError(
+                    "A baking dish may not be used without a number if other baking dishes have been used with a number."
+                )
+            else:
+                baking_dish_number = 1
+                if len(self.baking_dishes) == 0:
+                    self.baking_dishes.append(BakingDish("Baking Dish 1", []))
+
+        # check that we provide with enough baking dishes
+        if instruction.group(2) is not None:
+            self.number_of_baking_dishes = int(instruction.group(2))
+            baking_dish_number = self.number_of_baking_dishes
+            if self.number_of_baking_dishes > len(self.baking_dishes):
+                for i in range(len(self.baking_dishes), self.number_of_baking_dishes):
+                    self.baking_dishes.append(BakingDish(f"Baking Dish {i+1}", []))
+
+        return baking_dish_number
+
+    def check_ingredient_is_valid(self, ingredient):
+        if ingredient not in self.ingredients_names:
+            raise ValueError(
+                f"Ingredient {ingredient} not found in the list of ingredients"
+            )
+
     def execute_script(self):
         # Execute the instructions
         print(self.ingr)
@@ -408,41 +458,11 @@ class Chef:
                 instruction,
             )
             if put is not None:
-                # put.group(0) -> the whole match
-                # put.group(1) -> the ingredient
-                # put.group(2) -> the mixing bowl number (if any)
-                mixing_bowl_number = 1
+                mixing_bowl_number = self.prepare_mixing_bowls(put)
 
-                # check if there are any more mixing bowls
-                if put.group(2) is None:
-                    if self.number_of_mixing_bowls > 1:
-                        raise ValueError(
-                            "A mixing bowl may not be used without a number if other mixing bowls have been used with a number."
-                        )
-                    else:
-                        mixing_bowl_number = 1
-                        if len(self.mixing_bowls) == 0:
-                            self.mixing_bowls.append(MixingBowl("Mixing Bowl 1", []))
+                self.check_ingredient_is_valid(put.group(1))
 
-                # check that we provide with enough mixing bowls
-                if put.group(2) is not None:
-                    self.number_of_mixing_bowls = int(put.group(2))
-                    mixing_bowl_number = self.number_of_mixing_bowls
-                    if self.number_of_mixing_bowls > len(self.mixing_bowls):
-                        for i in range(
-                            len(self.mixing_bowls), self.number_of_mixing_bowls
-                        ):
-                            self.mixing_bowls.append(
-                                MixingBowl(f"Mixing Bowl {i+1}", [])
-                            )
-
-                # check if the ingredient is valid
-                if put.group(1) not in self.ingredients_names:
-                    raise ValueError(
-                        f"Ingredient {put.group(1)} not found in the list of ingredients"
-                    )
-
-                # Searh for thvaluee ingredient in the list of ingredients
+                # Searh for the ingredient value in the list of ingredients
                 for ingredient in self.ingr:
                     if ingredient["ingredient_name"] == put.group(1):
                         # put the ingredient in the mixing bowl that corresponds to the number
@@ -451,96 +471,193 @@ class Chef:
             ############################################################################
             # FOLD INGREDIENT INTO MIXING BOWL
             ############################################################################
+            fold = re.search(
+                "Fold ([a-zA-Z ]+) into (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if fold is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(fold)
 
-            # ...
+                self.check_ingredient_is_valid(fold.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == fold.group(1):
+                        # fold the ingredient in the mixing bowl that corresponds to the number
+                        self.fold(ingredient, mixing_bowl_number)
 
             ############################################################################
             # ADD INGREDIENT INTO MIXING BOWL
             ############################################################################
+            add = re.search(
+                "Add ([a-zA-Z ]+?) to (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if add is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(add)
 
-            # ...
+                self.check_ingredient_is_valid(add.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == add.group(1):
+                        # add the ingredient in the mixing bowl that corresponds to the number
+                        self.add(ingredient, mixing_bowl_number)
 
             ############################################################################
             # REMOVE INGREDIENT FROM MIXING BOWL
             ############################################################################
+            remove = re.search(
+                "Remove ([a-zA-Z ]+?) from (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if remove is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(remove)
 
-            # ...
+                self.check_ingredient_is_valid(remove.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == remove.group(1):
+                        # remove the ingredient in the mixing bowl that corresponds to the number
+                        self.remove(ingredient, mixing_bowl_number)
 
             ############################################################################
             # COMBINE INGREDIENT IN MIXING BOWL
             ############################################################################
+            combine = re.search(
+                "Combine ([a-zA-Z ]+?) into (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if combine is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(combine)
 
-            # ...
+                self.check_ingredient_is_valid(combine.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == combine.group(1):
+                        # combine the ingredient in the mixing bowl that corresponds to the number
+                        self.combine(ingredient, mixing_bowl_number)
 
             ############################################################################
             # STIR INGREDIENT IN MIXING BOWL
             ############################################################################
+            stir = re.search(
+                "Stir ([a-zA-Z ]+?) into (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if stir is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(stir)
 
-            # ...
+                self.check_ingredient_is_valid(stir.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == stir.group(1):
+                        # stir the ingredient in the mixing bowl that corresponds to the number
+                        self.stir(mixing_bowl_number, ingredient["initial_value"])
 
             ############################################################################
             # DIVIDE INGREDIENT IN MIXING BOWL
             ############################################################################
+            divide = re.search(
+                "Divide ([a-zA-Z ]+?) to (?:the )?(?:(1st|2nd|3rd|[0-9]+th) )?mixing bowl",
+                instruction,
+            )
+            if divide is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(divide)
 
-            # ...
+                self.check_ingredient_is_valid(divide.group(1))
+
+                # Searh for the ingredient value in the list of ingredients
+                for ingredient in self.ingr:
+                    if ingredient["ingredient_name"] == divide.group(1):
+                        # divide the ingredient in the mixing bowl that corresponds to the number
+                        self.divide(ingredient, mixing_bowl_number)
 
             ############################################################################
             # LIQUEFY INGREDIENT IN MIXING BOWL
             ############################################################################
-
-            # ...
+            liquefy = re.search(
+                "Liquefy contents of the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl",
+                instruction,
+            )
+            if liquefy is not None:
+                pass
 
             ############################################################################
             # LIQUIFY INGREDIENT IN MIXING BOWL
             ############################################################################
-
-            # ...
+            liquify = re.search(
+                "Liquify contents of the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl",
+                instruction,
+            )
+            if liquify is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(liquify)
+                self.liquefy_all_ingredients(mixing_bowl_number)
 
             ############################################################################
             # CLEAN MIXING BOWL
             ############################################################################
-
-            # ...
+            clean = re.search(
+                "Clean the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl", instruction
+            )
+            if clean is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(clean)
+                self.clean(mixing_bowl_number)
 
             ############################################################################
             # MIX INGREDIENT IN MIXING BOWL
             ############################################################################
-
-            # ...
+            mix = re.search(
+                "Mix the (1st|2nd|3rd|[0-9]+th)? ?mixing bowl well", instruction
+            )
+            if mix is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(mix)
+                self.mix(mixing_bowl_number)
 
             ############################################################################
-            # FRIDGE INGREDIENT IN MIXING BOWL
+            # TAKE INGREDIENT FROM FRIDGE
             ############################################################################
-
-            # ...
+            fridge = re.search("Take ([a-zA-Z]+) from refrigerator", instruction)
+            if fridge is not None:
+                pass
 
             ############################################################################
             # POUR INGREDIENT FROM MIXING BOWL
             ############################################################################
-
-            # ...
+            pour = re.search(
+                "Pour contents of the (?:the )?(?:([1-9]\d*)(?:st|nd|rd|th) )?mixing bowl into the (?:the )?(?:([1-9]\d*)(?:st|nd|rd|th) )?baking dish",
+                instruction,
+            )
+            if pour is not None:
+                pass
 
             ############################################################################
             # REFREGERATE INGREDIENT IN MIXING BOWL
             ############################################################################
-
-            # ...
+            refrigerate = re.search("Refrigerate (?:for ([0-9]+))? hours", instruction)
+            if refrigerate is not None:
+                self.refrigerate()
 
             ############################################################################
             # ADD DRY INGREDIENT TO MIXING BOWL
             ############################################################################
-
-            # ...
+            adddry = re.search(
+                "Add dry ingredients(?: to the (1st|2nd|3rd|[0-9]+th) mixing bowl)?",
+                instruction,
+            )
+            if adddry is not None:
+                mixing_bowl_number = self.prepare_mixing_bowls(adddry)
+                self.add_dry_ingredients(mixing_bowl_number)
 
             ############################################################################
             # VERB INGREDIENT IN MIXING BOWL
             ############################################################################
-
-            # ...
-
-            ############################################################################
-            # SERVE THE DISH
-            ############################################################################
+            verb = re.search("([a-zA-Z]+) the ([a-zA-Z ]+) ?(?!until)", instruction)
+            if verb is not None:
+                pass
 
         print(len(self.mixing_bowls))
         for mixing_bowl in self.mixing_bowls:
@@ -549,6 +666,7 @@ class Chef:
                     f"Ingredient: {ingredient.name} {ingredient.value} {ingredient.measure} {ingredient.measure_type} {ingredient.ingredient_type}"
                 )
 
+    # Add the ingredient to the top of the mixing bowl
     def put(self, ingredient, mixing_bowl_number):
         self.mixing_bowls[mixing_bowl_number - 1].ingredients.append(
             Ingredient(
@@ -560,7 +678,130 @@ class Chef:
             )
         )
 
-        return
+    # Remove the top ingredient from the mixing bowl and place the new ingredient on top
+    def fold(self, ingredient, mixing_bowl_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients.pop()
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients.append(
+            Ingredient(
+                ingredient["ingredient_name"],
+                ingredient["initial_value"],
+                ingredient["measure"],
+                ingredient["measure_type"],
+                ingredient["ingredient_type"],
+            )
+        )
+
+    # Take value from stdin and overwrite the ingredients value
+    def take(self, ingredient):
+        pass
+
+    # Add the ingredient value to the value of the ingredient at the top of the mixing bowl
+    def add(self, ingredient, mixing_bowl_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients[-1].value += ingredient[
+            "initial_value"
+        ]
+
+    # Remove the ingredient value from the value of the ingredient at the top of the mixing bowl
+    def remove(self, ingredient, mixing_bowl_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients[-1].value -= ingredient[
+            "initial_value"
+        ]
+
+    # Multiply the ingredient value by the value of the ingredient at the top of the mixing bowl
+    def combine(self, ingredient, mixing_bowl_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients[-1].value *= ingredient[
+            "initial_value"
+        ]
+
+    # Divide the ingredient value by the value of the ingredient at the top of the mixing bowl
+    def divide(self, ingredient, mixing_bowl_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients[-1].value /= ingredient[
+            "initial_value"
+        ]
+
+    # Sum all the values of the dry ingredients and add the sum to the top of the mixing bowl
+    # as a new ingredient called "dry ingredients"
+    def add_dry_ingredients(self, mixing_bowl_number):
+        # sum all the dry ingredients
+        sum = 0
+        for ingredient in self.ingredients:
+            if ingredient["ingredient_type"] == "dry":
+                sum += ingredient["initial_value"]
+
+        # add the sum to the top of the mixing bowl
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients.append(
+            Ingredient(
+                "dry ingredients",
+                sum,
+                "",
+                "",
+                "dry",
+            )
+        )
+
+    # turn the ingredient outside the mixing bowl into a liquid
+    def liquefy_single_ingredient(self, ingredient):
+        # search for the ingredient in the mixing bowl
+        for ingr in self.ingredients:
+            if ingr["ingredient_name"] == ingredient:
+                ingr["ingredient_type"] = "liquid"
+                return
+
+    # turn all the ingredients inside the mixing bowl into a liquid
+    def liquefy_all_ingredients(self, mixing_bowl_number):
+        for ingredient in self.mixing_bowls[mixing_bowl_number - 1].ingredients:
+            ingredient.ingredient_type = "liquid"
+
+    # move the top element to n positions down the stack, if n > len(stack) then the element is moved to the bottom
+    def stir(self, mixing_bowl_number, n):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        ingredient = self.mixing_bowls[mixing_bowl_number - 1].ingredients.pop()
+        n = n % len(self.mixing_bowls[mixing_bowl_number - 1].ingredients)
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients.insert(n, ingredient)
+
+    # randomize the order of the ingredients in the mixing bowl
+    def mix(self, mixing_bowl_number):
+        random.shuffle(self.mixing_bowls[mixing_bowl_number - 1].ingredients)
+
+    # remove all the ingredients from the mixing bowl
+    def clean(self, mixing_bowl_number):
+        self.mixing_bowls[mixing_bowl_number - 1].ingredients = []
+
+    # Copy the elements from the mixing bowl to the baking dish, if the baking dish is not empty, the elements are added to the top
+    def pour(self, mixing_bowl_number, baking_dish_number):
+        if len(self.mixing_bowls[mixing_bowl_number - 1].ingredients) == 0:
+            raise ValueError(f"Mixing bowl {mixing_bowl_number} is empty")
+        if baking_dish_number > len(self.baking_dishes):
+            self.baking_dishes.append(
+                BakingDish(f"Baking Dish {baking_dish_number}", [])
+            )
+        for ingredient in self.mixing_bowls[mixing_bowl_number - 1].ingredients:
+            self.baking_dishes[baking_dish_number - 1].ingredients.append(ingredient)
+
+    # For loop
+    # it starts with the keyword Verb the, followed by an ingredient, the loop checks the value of the ingredient
+    # it the value is not 0, the loop executes the instructions inside the loop, if the value is 0, the loop is skipped
+    # the loop ends with the keyword Verb [the ingredient] until verbed, the ingredient could be any, but
+    # if the ingredient matches with the ingredient on "Verb the ingredient", the value of this ingredient is decremented by 1
+    # Watchout for the instruction Set aside, this instruction is used to break the loop
+    def verb_loop(self, ingredient1, ingredient2, instructions):
+        pass
+
+    # Refrigerate means to end the execution of the program
+    def refrigerate(self):
+        print("Refrigerating...")
+        sys.exit()
 
     # Serve the dish (print the recipe)
     def serve(self):
